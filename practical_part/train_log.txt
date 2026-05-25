@@ -1,0 +1,14 @@
+FastText training log
+---------------------
+corpus       : C:\Users\nurka\OneDrive\Documents\Claude\Projects\дипломка 2\practical_part\clean_corpus.txt
+sentences    : 1120
+vocab size   : 1976
+vector_size  : 100
+window       : 5
+min_count    : 2
+epochs       : 20
+min_n/max_n  : 3/6
+sg           : 1 (skip-gram)
+bucket       : 50000
+train time   : 1.03 s
+model file   : C:\Users\nurka\OneDrive\Documents\Claude\Projects\дипломка 2\practical_part\fasttext_model.bin
