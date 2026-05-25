@@ -1,57 +1,70 @@
 # Деплой на Streamlit Community Cloud
 
-## Шаг 1. Залить проект на GitHub
+## Что обязательно должно быть в репозитории
 
-1. Создай новый репозиторий на github.com (например, `kg-fasttext-thesis`). Можно публичный — бесплатный план Streamlit Cloud требует публичных репо.
-2. Загрузи туда **всю папку `practical_part`** (через GitHub Desktop, web-интерфейс или git push). Минимум должны быть:
+```
+gui.py                                   ← главный файл
+preprocess.py train.py analyze.py morphology.py metrics.py
+requirements.txt                         ← список пакетов (Python)
+.python-version                          ← фиксирует Python 3.11
+corpus.txt
+clean_corpus.txt
+fasttext_model.bin                       (~21 МБ)
+fasttext_model.bin.wv.vectors_ngrams.npy (если есть)
+corpus_stats.txt
+report_similarity.txt
+report_morphology.txt
+report_metrics.txt
+```
 
-   ```
-   gui.py
-   preprocess.py
-   train.py
-   analyze.py
-   morphology.py
-   metrics.py
-   requirements.txt
-   runtime.txt
-   corpus.txt
-   clean_corpus.txt
-   fasttext_model.bin                       (~21 МБ)
-   fasttext_model.bin.wv.vectors_ngrams.npy (если присутствует)
-   corpus_stats.txt
-   train_log.txt
-   report_similarity.txt
-   report_morphology.txt
-   report_metrics.txt
-   ```
+## Если предыдущий деплой упал с ошибкой
 
-   Файл `fasttext_model.bin` весит около 21 МБ — GitHub принимает файлы до 100 МБ без проблем, обычный git push сработает. Если вдруг будет ошибка про размер — используй Git LFS.
+1. Зайти в Streamlit Cloud → найти приложение → **Manage app → Settings → Delete app**.
+2. Дождаться, пока приложение полностью удалится (1–2 минуты).
+3. Запушить новые `requirements.txt` и `.python-version` в репозиторий.
+4. Снова **New app** и задеплоить.
 
-## Шаг 2. Деплой на Streamlit Cloud
+(Можно и без удаления — нажать **Reboot app** в правом нижнем углу логов, тогда облако перечитает обновлённые файлы.)
 
-1. Зайди на https://share.streamlit.io и авторизуйся через GitHub.
-2. Нажми **"New app"** (или "Deploy an app").
-3. Заполни форму:
-   - **Repository**: `твой-логин/kg-fasttext-thesis`
-   - **Branch**: `main` (или `master`)
-   - **Main file path**: **`gui.py`**   ← вот тот файл, что ты спрашивал
-   - **App URL** (опционально): что-то вроде `kg-fasttext` — получится `kg-fasttext.streamlit.app`
-4. Жми **"Deploy!"**. Через 2–5 минут установятся зависимости из `requirements.txt`, и приложение запустится.
+## Деплой пошагово
 
-## Что нужно подправить в коде для облака
+1. https://share.streamlit.io → **New app**.
+2. Поля:
+   - **Repository**: твой-логин/название-репо
+   - **Branch**: `main`
+   - **Main file path**: `gui.py`
+3. Жми **Deploy!**
 
-GUI содержит кнопки «Предобработка / Обучить / …», которые запускают другие скрипты как отдельные процессы. На Streamlit Cloud это технически работает, но файловая система там **временная** — после рестарта контейнера новые файлы пропадут. Поэтому при деплое:
+При первом запуске Streamlit прочитает `.python-version`, поставит Python 3.11, затем установит пакеты из `requirements.txt`. Обычно занимает 3–5 минут.
 
-- модель `fasttext_model.bin` обязательно должна быть в репозитории — она прочитается прямо оттуда;
-- все `.txt`-отчёты (`corpus_stats.txt`, `report_*.txt`) тоже желательно положить в репо — иначе на первом запуске вкладки «Обзор» / «Метрики» покажут сообщения «файл не найден», пока пользователь не нажмёт соответствующую кнопку.
+## Почему предыдущий деплой не сработал
 
-Если хочется, чтобы кнопки в облаке не работали (а только демонстрация результата) — можно убрать кнопки из левой панели; основная функциональность (поиск соседей, морфоформы, метрики) от этого не пострадает.
+- В облако попал Python 3.14 (последний доступный). Под него `gensim 4.4.0` не собирается — несовместимые изменения в C-API CPython (`PyLongObject->ob_digit`, `_PyLong_AsByteArray`).
+- В `requirements.txt` оказался полный дамп `pip freeze`, включая Django, asgiref, starlette и т.п. — лишние пакеты, конфликтующие версии.
+- `runtime.txt` для Streamlit Cloud **не работает** (это формат Heroku). Правильный способ зафиксировать Python — файл `.python-version`.
 
-## Резюме
+## Текущая конфигурация
 
-| Локально (Windows) | Streamlit Cloud |
-|---|---|
-| `run_gui.bat` (двойной клик) | поле `Main file path` = **`gui.py`** |
-| `streamlit run gui.py` | `requirements.txt` ставит зависимости автоматически |
+`.python-version`:
+```
+3.11
+```
 
-Главный файл для деплоя — **`gui.py`**.
+`requirements.txt` (только то, что реально используется):
+```
+streamlit==1.39.0
+gensim==4.3.3
+numpy==1.26.4
+scipy==1.13.1
+pandas==2.2.3
+matplotlib==3.9.2
+```
+
+Эти версии проверенно совместимы между собой и с Python 3.11. Главное:
+- `numpy<2.0` — gensim 4.3 не работает с numpy 2.x
+- `gensim 4.3.3` — стабильная и совпадает с тем, на чём обучалась модель локально (важно при загрузке `fasttext_model.bin`)
+- `scipy<1.14` — gensim 4.3 ломается на новых scipy
+
+## Альтернатива: запретить кнопки в облаке
+
+Кнопки «Предобработка / Обучить / …» в облаке работают, но запись файлов не сохранится между перезапусками контейнера. Если хочешь, чтобы облачная версия была только демонстрационной, можно убрать блок с кнопками из `gui.py` (строки `if st.sidebar.button(...)` — 5 штук). Локальная версия в Windows от этого не пострадает, если оставить локальный `gui.py` нетронутым.
