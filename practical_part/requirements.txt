@@ -1,0 +1,6 @@
+streamlit>=1.28
+gensim>=4.3
+numpy>=1.24,<2.0
+pandas>=2.0
+matplotlib>=3.7
+scipy>=1.10
